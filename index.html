@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
@@ -69,8 +69,8 @@
     </label>
     <button onclick="addPlanet()">행성 추가</button>
     <button onclick="initPlanets()">초기화</button>
-    <button onclick="resetSimulation()">완전 초기화</button>
-    <button onclick="addRandomPlanets()">랜덤 행성 생성</button>
+    <button onclick="clearPlanets()">완전 초기화</button>
+    <button onclick="addRandomPlanets()">랜덤 생성</button>
   </div>
   <canvas id="simulationCanvas" width="800" height="800"></canvas>
 
@@ -160,9 +160,57 @@
       ];
     }
 
-    function resetSimulation() {
+    function clearPlanets() {
       planets = [];
     }
+
+    initPlanets();
+
+    function animate() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // 충돌 검사 및 합병 처리
+      for (let i = planets.length -1; i >= 0; i--) {
+        for (let j = i -1; j >= 0; j--) {
+          const p1 = planets[i];
+          const p2 = planets[j];
+          const dx = p1.x - p2.x;
+          const dy = p1.y - p2.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < p1.radius / SCALE + p2.radius / SCALE) {
+            // 합병 처리
+            const totalMass = p1.mass + p2.mass;
+            // 질량 가중 평균 위치 및 속도
+            const newX = (p1.x * p1.mass + p2.x * p2.mass) / totalMass;
+            const newY = (p1.y * p1.mass + p2.y * p2.mass) / totalMass;
+            const newVx = (p1.vx * p1.mass + p2.vx * p2.mass) / totalMass;
+            const newVy = (p1.vy * p1.mass + p2.vy * p2.mass) / totalMass;
+            // 반지름은 부피 보존 가정 (반지름 ~ (부피)^(1/3))
+            const newRadius = Math.cbrt(p1.radius ** 3 + p2.radius ** 3);
+            // 색상은 p1 유지 (원하는대로 변경 가능)
+            const newColor = p1.color;
+
+            // 새 행성 만들고 기존 둘 삭제
+            planets.splice(i,1);
+            planets.splice(j,1);
+            planets.push(new Planet(newX, newY, newRadius, newColor, totalMass, newVx, newVy));
+            break;
+          }
+        }
+      }
+
+      for (let p of planets) {
+        p.update(planets);
+      }
+
+      for (let p of planets) {
+        p.draw();
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    animate();
 
     function addPlanet() {
       const mass = parseFloat(document.getElementById('mass').value);
@@ -176,17 +224,22 @@
     }
 
     function addRandomPlanets() {
-      const count = Math.floor(Math.random() * 6) + 6; // 3~5개
-      const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff', '#ffaa00', '#aaff00', '#aa00ff'];
+      const count = Math.floor(Math.random() * 3) + 3; // 3~5개
+      const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff', '#ffaa00', '#aaff00', '#aa00ff', '#ffffff'];
 
       for (let i = 0; i < count; i++) {
-        const mass = Math.random() * (5e30 - 1e22) + 1e22;
+        const mass = Math.random() * (5e31 - 1e23) + 1e23;
         const radius = Math.random() * 20 + 5;
         const color = colors[Math.floor(Math.random() * colors.length)];
-        const x = (Math.random() - 0.5) * 8e11;
-        const y = (Math.random() - 0.5) * 8e11;
-        const vx = (Math.random() - 0.5) * 90000;
-        const vy = (Math.random() - 0.5) * 90000;
+
+        const distance = Math.random() * 8e11 + 5e10; // 5e10 ~ 8.5e11m
+        const angle = Math.random() * 2 * Math.PI;
+        const x = Math.cos(angle) * distance;
+        const y = Math.sin(angle) * distance;
+
+        const speedMagnitude = Math.random() * 150000 + 20000; // 2만 ~ 17만 m/s
+        const vx = -Math.sin(angle) * speedMagnitude;
+        const vy = Math.cos(angle) * speedMagnitude;
 
         planets.push(new Planet(x, y, radius, color, mass, vx, vy));
       }
@@ -195,42 +248,6 @@
     document.getElementById('speed').addEventListener('input', (e) => {
       speedMultiplier = parseFloat(e.target.value);
     });
-
-    function animate() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      for (let i = planets.length -1; i >= 0; i--) {
-        for (let j = i -1; j >= 0; j--) {
-          const p1 = planets[i];
-          const p2 = planets[j];
-          const dx = p1.x - p2.x;
-          const dy = p1.y - p2.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < p1.radius / SCALE + p2.radius / SCALE) {
-            const totalMass = p1.mass + p2.mass;
-            const newX = (p1.x * p1.mass + p2.x * p2.mass) / totalMass;
-            const newY = (p1.y * p1.mass + p2.y * p2.mass) / totalMass;
-            const newVx = (p1.vx * p1.mass + p2.vx * p2.mass) / totalMass;
-            const newVy = (p1.vy * p1.mass + p2.vy * p2.mass) / totalMass;
-            const newRadius = Math.cbrt(p1.radius ** 3 + p2.radius ** 3);
-            const newColor = p1.color;
-
-            planets.splice(i,1);
-            planets.splice(j,1);
-            planets.push(new Planet(newX, newY, newRadius, newColor, totalMass, newVx, newVy));
-            break;
-          }
-        }
-      }
-
-      for (let p of planets) p.update(planets);
-      for (let p of planets) p.draw();
-
-      requestAnimationFrame(animate);
-    }
-
-    initPlanets();
-    animate();
   </script>
 </body>
 </html>
