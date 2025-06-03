@@ -69,6 +69,7 @@
     </label>
     <button onclick="addPlanet()">행성 추가</button>
     <button onclick="initPlanets()">초기화</button>
+    <button onclick="generateRandomPlanets()">랜덤 생성</button>
   </div>
   <canvas id="simulationCanvas" width="800" height="800"></canvas>
 
@@ -158,12 +159,9 @@
       ];
     }
 
-    initPlanets();
-
     function animate() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // 충돌 검사 및 합병 처리
       for (let i = planets.length -1; i >= 0; i--) {
         for (let j = i -1; j >= 0; j--) {
           const p1 = planets[i];
@@ -172,35 +170,24 @@
           const dy = p1.y - p2.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
           if (dist < p1.radius / SCALE + p2.radius / SCALE) {
-            // 합병 처리
             const totalMass = p1.mass + p2.mass;
-            // 질량 가중 평균 위치 및 속도
             const newX = (p1.x * p1.mass + p2.x * p2.mass) / totalMass;
             const newY = (p1.y * p1.mass + p2.y * p2.mass) / totalMass;
             const newVx = (p1.vx * p1.mass + p2.vx * p2.mass) / totalMass;
             const newVy = (p1.vy * p1.mass + p2.vy * p2.mass) / totalMass;
-            // 반지름은 부피 보존 가정 (반지름 ~ (부피)^(1/3))
             const newRadius = Math.cbrt(p1.radius ** 3 + p2.radius ** 3);
-            // 색상은 p1 유지 (원하는대로 변경 가능)
             const newColor = p1.color;
 
-            // 새 행성 만들고 기존 둘 삭제
             planets.splice(i,1);
             planets.splice(j,1);
             planets.push(new Planet(newX, newY, newRadius, newColor, totalMass, newVx, newVy));
-            // 중첩 방지를 위해 break
             break;
           }
         }
       }
 
-      for (let p of planets) {
-        p.update(planets);
-      }
-
-      for (let p of planets) {
-        p.draw();
-      }
+      for (let p of planets) p.update(planets);
+      for (let p of planets) p.draw();
 
       requestAnimationFrame(animate);
     }
@@ -221,6 +208,38 @@
     document.getElementById('speed').addEventListener('input', (e) => {
       speedMultiplier = parseFloat(e.target.value);
     });
+
+    function generateRandomPlanets() {
+      const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+      const randomFloat = (min, max) => Math.random() * (max - min) + min;
+
+      const colors = ['#ff5555', '#00aaff', '#55ff55', '#ffaa00', '#ff00ff'];
+      const count = randomInt(3, 5);
+      const newPlanets = [];
+
+      for (let i = 0; i < count; i++) {
+        const mass = randomFloat(1e23, 1e26);
+        const radius = randomInt(3, 8);
+        const color = colors[randomInt(0, colors.length - 1)];
+        const x = randomFloat(-2e11, 2e11);
+        const y = randomFloat(-2e11, 2e11);
+        const vx = randomFloat(-30000, 30000);
+        const vy = randomFloat(-30000, 30000);
+        newPlanets.push(new Planet(x, y, radius, color, mass, vx, vy));
+      }
+
+      // 중심 보정
+      const heaviest = newPlanets.reduce((a, b) => (a.mass > b.mass ? a : b));
+      const offsetX = heaviest.x;
+      const offsetY = heaviest.y;
+
+      for (let p of newPlanets) {
+        p.x -= offsetX;
+        p.y -= offsetY;
+      }
+
+      planets.push(...newPlanets);
+    }
   </script>
 </body>
 </html>
