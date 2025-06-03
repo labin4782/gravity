@@ -69,8 +69,8 @@
     </label>
     <button onclick="addPlanet()">행성 추가</button>
     <button onclick="initPlanets()">초기화</button>
-    <button onclick="generateRandomPlanets()">랜덤 생성</button>
-    <button onclick="clearAllPlanets()">완전 초기화</button>
+    <button onclick="resetSimulation()">완전 초기화</button>
+    <button onclick="addRandomPlanets()">랜덤 행성 생성</button>
   </div>
   <canvas id="simulationCanvas" width="800" height="800"></canvas>
 
@@ -160,9 +160,41 @@
       ];
     }
 
-    function clearAllPlanets() {
+    function resetSimulation() {
       planets = [];
     }
+
+    function addPlanet() {
+      const mass = parseFloat(document.getElementById('mass').value);
+      const radius = parseFloat(document.getElementById('radius').value);
+      const color = document.getElementById('color').value;
+      const x = parseFloat(document.getElementById('posX').value);
+      const y = parseFloat(document.getElementById('posY').value);
+      const vx = parseFloat(document.getElementById('velX').value);
+      const vy = parseFloat(document.getElementById('velY').value);
+      planets.push(new Planet(x, y, radius, color, mass, vx, vy));
+    }
+
+    function addRandomPlanets() {
+      const count = Math.floor(Math.random() * 3) + 3; // 3~5개
+      const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff', '#ffaa00', '#aaff00', '#aa00ff'];
+
+      for (let i = 0; i < count; i++) {
+        const mass = Math.random() * (5e31 - 1e23) + 1e23;
+        const radius = Math.random() * 20 + 5;
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        const x = (Math.random() - 0.5) * 4e11;
+        const y = (Math.random() - 0.5) * 4e11;
+        const vx = (Math.random() - 0.5) * 50000;
+        const vy = (Math.random() - 0.5) * 50000;
+
+        planets.push(new Planet(x, y, radius, color, mass, vx, vy));
+      }
+    }
+
+    document.getElementById('speed').addEventListener('input', (e) => {
+      speedMultiplier = parseFloat(e.target.value);
+    });
 
     function animate() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -197,54 +229,8 @@
       requestAnimationFrame(animate);
     }
 
+    initPlanets();
     animate();
-
-    function addPlanet() {
-      const mass = parseFloat(document.getElementById('mass').value);
-      const radius = parseFloat(document.getElementById('radius').value);
-      const color = document.getElementById('color').value;
-      const x = parseFloat(document.getElementById('posX').value);
-      const y = parseFloat(document.getElementById('posY').value);
-      const vx = parseFloat(document.getElementById('velX').value);
-      const vy = parseFloat(document.getElementById('velY').value);
-      planets.push(new Planet(x, y, radius, color, mass, vx, vy));
-    }
-
-    document.getElementById('speed').addEventListener('input', (e) => {
-      speedMultiplier = parseFloat(e.target.value);
-    });
-
-    function generateRandomPlanets() {
-      const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
-      const randomFloat = (min, max) => Math.random() * (max - min) + min;
-
-      const colors = ['#ff5555', '#00aaff', '#55ff55', '#ffaa00', '#ff00ff', '#ffffff', '#8888ff', '#00ffcc', '#ff8800', '#aa00ff'];
-      const count = randomInt(3, 5);
-      const newPlanets = [];
-
-      for (let i = 0; i < count; i++) {
-        const mass = randomFloat(1e23, 5e27);
-        const radius = randomInt(3, 20);
-        const color = colors[randomInt(0, colors.length - 1)];
-        const x = randomFloat(-2e11, 2e11);
-        const y = randomFloat(-2e11, 2e11);
-        const vx = randomFloat(-30000, 30000);
-        const vy = randomFloat(-30000, 30000);
-        newPlanets.push(new Planet(x, y, radius, color, mass, vx, vy));
-      }
-
-      // 중심 보정
-      const heaviest = newPlanets.reduce((a, b) => (a.mass > b.mass ? a : b));
-      const offsetX = heaviest.x;
-      const offsetY = heaviest.y;
-
-      for (let p of newPlanets) {
-        p.x -= offsetX;
-        p.y -= offsetY;
-      }
-
-      planets.push(...newPlanets);
-    }
   </script>
 </body>
 </html>
