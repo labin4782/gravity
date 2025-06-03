@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>행성 중력 시뮬레이션</title>
+  <style>
+    body {
+      background-color: #000;
+      color: white;
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0;
+    }
+    canvas {
+      background: black;
+      display: block;
+      margin: 1rem auto;
+      border: 1px solid #444;
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 1rem;
+      padding: 1rem;
+    }
+    .controls label {
+      display: flex;
+      flex-direction: column;
+      color: #ddd;
+      min-width: 120px;
+    }
+    .controls input, .controls button {
+      padding: 0.5rem;
+      font-size: 1rem;
+      margin-top: 0.2rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>행성 중력 시뮬레이션</h1>
+  <div class="controls">
+    <label>질량 (kg)
+      <input type="number" id="mass" value="5.972e24" step="1e22">
+    </label>
+    <label>반지름 (픽셀)
+      <input type="number" id="radius" value="6" step="1">
+    </label>
+    <label>색상
+      <input type="color" id="color" value="#00aaff">
+    </label>
+    <label>X 위치 (m)
+      <input type="number" id="posX" value="1.5e11" step="1e9">
+    </label>
+    <label>Y 위치 (m)
+      <input type="number" id="posY" value="0" step="1e9">
+    </label>
+    <label>X 속도 (m/s)
+      <input type="number" id="velX" value="0" step="1000">
+    </label>
+    <label>Y 속도 (m/s)
+      <input type="number" id="velY" value="29780" step="1000">
+    </label>
+    <label>시뮬레이션 속도 배율
+      <input type="range" id="speed" min="0.1" max="5" step="0.1" value="1">
+    </label>
+    <button onclick="addPlanet()">행성 추가</button>
+    <button onclick="initPlanets()">초기화</button>
+  </div>
+  <canvas id="simulationCanvas" width="800" height="800"></canvas>
+
+  <script>
+    const canvas = document.getElementById('simulationCanvas');
+    const ctx = canvas.getContext('2d');
+    let speedMultiplier = 1;
+
+    const G = 6.67430e-11;
+    const SCALE = 1e-9;
+    let TIMESTEP = 3600;
+
+    class Planet {
+      constructor(x, y, radius, color, mass, vx = 0, vy = 0) {
+        this.x = x;
+        this.y = y;
+        this.vx = vx;
+        this.vy = vy;
+        this.radius = radius;
+        this.color = color;
+        this.mass = mass;
+        this.orbit = [];
+      }
+
+      draw() {
+        const screenX = this.x * SCALE + canvas.width / 2;
+        const screenY = this.y * SCALE + canvas.height / 2;
+
+        ctx.beginPath();
+        ctx.arc(screenX, screenY, this.radius, 0, 2 * Math.PI);
+        ctx.fillStyle = this.color;
+        ctx.shadowColor = this.color;
+        ctx.shadowBlur = 15;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        if (this.orbit.length > 1) {
+          ctx.beginPath();
+          ctx.strokeStyle = this.color;
+          for (let i = 0; i < this.orbit.length - 1; i++) {
+            const [x1, y1] = this.orbit[i];
+            const [x2, y2] = this.orbit[i + 1];
+            ctx.moveTo(x1 * SCALE + canvas.width / 2, y1 * SCALE + canvas.height / 2);
+            ctx.lineTo(x2 * SCALE + canvas.width / 2, y2 * SCALE + canvas.height / 2);
+          }
+          ctx.stroke();
+        }
+      }
+
+      update(planets) {
+        let fx = 0;
+        let fy = 0;
+
+        for (let other of planets) {
+          if (other === this) continue;
+
+          const dx = other.x - this.x;
+          const dy = other.y - this.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist === 0) continue;
+
+          const force = (G * this.mass * other.mass) / (dist * dist);
+          const angle = Math.atan2(dy, dx);
+
+          fx += Math.cos(angle) * force;
+          fy += Math.sin(angle) * force;
+        }
+
+        this.vx += (fx / this.mass) * TIMESTEP * speedMultiplier;
+        this.vy += (fy / this.mass) * TIMESTEP * speedMultiplier;
+        this.x += this.vx * TIMESTEP * speedMultiplier;
+        this.y += this.vy * TIMESTEP * speedMultiplier;
+
+        this.orbit.push([this.x, this.y]);
+        if (this.orbit.length > 300) this.orbit.shift();
+      }
+    }
+
+    let planets = [];
+
+    function initPlanets() {
+      planets = [
+        new Planet(0, 0, 20, 'yellow', 1.989e30),
+        new Planet(1.5e11, 0, 6, '#00aaff', 5.972e24, 0, 29780),
+        new Planet(2.2e11, 0, 4, '#ff5555', 3.3e23, 0, 24000),
+        new Planet(1.1e11, 0, 5, '#55ff55', 4.87e24, 0, 35000),
+      ];
+    }
+
+    initPlanets();
+
+    function animate() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // 충돌 검사 및 합병 처리
+      for (let i = planets.length -1; i >= 0; i--) {
+        for (let j = i -1; j >= 0; j--) {
+          const p1 = planets[i];
+          const p2 = planets[j];
+          const dx = p1.x - p2.x;
+          const dy = p1.y - p2.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < p1.radius / SCALE + p2.radius / SCALE) {
+            // 합병 처리
+            const totalMass = p1.mass + p2.mass;
+            // 질량 가중 평균 위치 및 속도
+            const newX = (p1.x * p1.mass + p2.x * p2.mass) / totalMass;
+            const newY = (p1.y * p1.mass + p2.y * p2.mass) / totalMass;
+            const newVx = (p1.vx * p1.mass + p2.vx * p2.mass) / totalMass;
+            const newVy = (p1.vy * p1.mass + p2.vy * p2.mass) / totalMass;
+            // 반지름은 부피 보존 가정 (반지름 ~ (부피)^(1/3))
+            const newRadius = Math.cbrt(p1.radius ** 3 + p2.radius ** 3);
+            // 색상은 p1 유지 (원하는대로 변경 가능)
+            const newColor = p1.color;
+
+            // 새 행성 만들고 기존 둘 삭제
+            planets.splice(i,1);
+            planets.splice(j,1);
+            planets.push(new Planet(newX, newY, newRadius, newColor, totalMass, newVx, newVy));
+            // 중첩 방지를 위해 break
+            break;
+          }
+        }
+      }
+
+      for (let p of planets) {
+        p.update(planets);
+      }
+
+      for (let p of planets) {
+        p.draw();
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    animate();
+
+    function addPlanet() {
+      const mass = parseFloat(document.getElementById('mass').value);
+      const radius = parseFloat(document.getElementById('radius').value);
+      const color = document.getElementById('color').value;
+      const x = parseFloat(document.getElementById('posX').value);
+      const y = parseFloat(document.getElementById('posY').value);
+      const vx = parseFloat(document.getElementById('velX').value);
+      const vy = parseFloat(document.getElementById('velY').value);
+      planets.push(new Planet(x, y, radius, color, mass, vx, vy));
+    }
+
+    document.getElementById('speed').addEventListener('input', (e) => {
+      speedMultiplier = parseFloat(e.target.value);
+    });
+  </script>
+</body>
+</html>
