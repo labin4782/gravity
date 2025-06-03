@@ -224,11 +224,11 @@
     }
 
     function addRandomPlanets() {
-      const count = Math.floor(Math.random() * 6) + 6; // 3~5개
+      const count = Math.floor(Math.random() * 9) + 9; // 3~5개
       const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff', '#ffaa00', '#aaff00', '#aa00ff', '#ffffff'];
 
       for (let i = 0; i < count; i++) {
-        const mass = Math.random() * (5e31 - 1e22) + 1e23;
+        const mass = Math.random() * (5e31 - 1e22) + 1e22;
         const radius = Math.random() * 20 + 3;
         const color = colors[Math.floor(Math.random() * colors.length)];
 
